@@ -145,7 +145,11 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Header.h" />
+    <ClInclude Include="CareGiver.h" />
+    <ClInclude Include="Map.h" />
+    <ClInclude Include="Queue.h" />
+    <ClInclude Include="Patient.h" />
+    <ClInclude Include="Simulator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
