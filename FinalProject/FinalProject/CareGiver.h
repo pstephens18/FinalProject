@@ -8,6 +8,7 @@ class careGiver {
 protected:
 	int maxWaitTime;
 	int minWaitTime;
+	Patient* patient;
 public:
 	careGiver(int max, int min) {
 		maxWaitTime = max;
@@ -18,17 +19,6 @@ public:
 	virtual int getMinWaitTime() = 0;
 };
 
-class Receptionist : public careGiver {
-public:
-	Receptionist(int max, int min) : careGiver(max, min) {};
-
-	int getMaxWaitTime() {
-		return maxWaitTime;
-	}
-	int getMinWaitTime() {
-		return minWaitTime;
-	}
-};
 
 class Nurse : public careGiver {
 public:

@@ -147,7 +147,6 @@
   <ItemGroup>
     <ClInclude Include="CareGiver.h" />
     <ClInclude Include="Map.h" />
-    <ClInclude Include="Queue.h" />
     <ClInclude Include="Patient.h" />
     <ClInclude Include="Simulator.h" />
   </ItemGroup>

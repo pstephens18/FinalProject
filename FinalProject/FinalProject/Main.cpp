@@ -7,12 +7,10 @@
 using namespace std;
 
 int main() {
-	// Do stuff here.
-	for (int i = 0; i < 1000; i++) 
-	{
-		cout << rand() % 1000 << " ";
-	}
+	Simulator* sim = new Simulator();
+	sim->enter_data();
+	sim->run_simulation();
 
-	// Do more stuff
+
 	return 0;
 }
