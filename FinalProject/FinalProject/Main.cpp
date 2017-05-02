@@ -7,10 +7,13 @@
 using namespace std;
 
 int main() {
+	srand(time(NULL));
+
 	Simulator* sim = new Simulator();
 	sim->enter_data();
-	sim->run_simulation();
+	sim->run_simulation(60*24*7);
+	sim->show_stats();
 
+	delete sim;
 
-	return 0;
 }
