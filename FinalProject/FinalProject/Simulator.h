@@ -8,6 +8,8 @@
 #include <vector>
 #include <ctime>
 #include <cstdlib>
+#include <map>
+#include <fstream>
 using namespace std;
 
 
@@ -21,6 +23,11 @@ private:
 	int totalVisitTime;
 	int totalVisits;
 
+	int priorityIterator;
+
+	
+	map<string, Patient*> patientsByName;
+
 	int doctorTime;
 	int nurseTime;
 
@@ -29,11 +36,13 @@ private:
 
 	vector<Doctor*> doctors;
 	vector<Nurse*> nurses;
+	vector<Patient*> patients;
+	vector<Patient*> visitors;
 
 
-	queue<Patient*> *lowSeverity;
-	queue<Patient*> *medSeverity;
-	queue<Patient*> *highSeverity;
+	priority_queue<int> *waitlist;
+
+
 
 					 
 
@@ -71,9 +80,10 @@ public:
 		totalVisitTime = 0;
 		totalVisits = 0;
 		nurseTime = 0; nurseTotal = 0; doctorTime = 0; doctorTotal = 0;
-		lowSeverity = new queue<Patient*>;
-		medSeverity = new queue<Patient*>;
-		highSeverity = new queue<Patient*>;
+		waitlist = new priority_queue<int>;
+		
+		Patients_init();
+		priorityIterator = 0;
 	
 	};
 
@@ -103,11 +113,13 @@ public:
 		return ((rand() % (max - min + 1)) + min);
 	}
 
-	void run_simulation(int sim_time){
+	void run_simulation(int sim_time){ 
+		Patient* p;
+		int severity;
+		int wait;
+		string name;
+		string illness;
 		for (int i = 0; i <= sim_time; i++) {
-			Patient* p;
-			int severity;
-			int wait;
 
 			// Check if a Nurse is done with their patient and adjust stats accordingly
 			for (int i = 0; i < nurses.size();i++) {
@@ -146,84 +158,120 @@ public:
 			}
 
 
-
-
-			// Check Arrival
-
 			// TODO integrate map of patients and illnesses into Arrival Process
-
-			// Randomly decide if a new patient has arrived
-			if (random(60, 1) < patientArivalRate) {
+			
+			// Randomly decide if a new patient has arrived 
+			if (random(60, 0) < patientArivalRate) {
 				// Randomly decide the severity of the patient's illness
-				severity = random(10, 1);
-				// Create a patient with the determined severity of illness and put them in the correct queue
-				if (severity > 9) {
-					p = new Patient("name", "illness", clock);
-					highSeverity->push(p);
+				if (random(10, 1) == 1) { severity = random(20, 16); }
+				else if (random(5, 1) == 1) { severity = random(15, 11); }
+				else { severity = random(10, 1); }
+
+				
+				// Select someone to get sick
+				int index;
+				bool con = true;
+				int size = patients.size();
+				
+				do {
+					index = random(size-1,0);
+
+					// Make sure the patient is not sick already
+					if (!(patients[index]->getSick())) {
+
+						// Make Patient Sick
+						patients[index]->setSick(true);
+
+						// Set Arrival Time
+						patients[index]->setArrivalTime(clock);
+
+
+						// Set Priority 
+						p = patients[index];
+						p->setPriority(severity*1000 + 999 - priorityIterator);
+						priorityIterator++;
+						con = false;
+					}
+				} while (con); 
+
+				bool visited_before = false;
+
+				// Check to see if the patient has visited before
+				for (int i = 0;i < visitors.size();i++) { 
+					if (visitors[i]->getName() == p->getName()) { 
+						// Increment visits
+						visitors[i]->incrementVisits();
+						visited_before == true; 
+					} 
 				}
-				else if (severity > 7 && severity < 10) {
-					p = new Patient("name", "illness", clock);
-					medSeverity->push(p);
+
+				// Add to list if they have not visited before
+				if (!visited_before) { 
+					p->incrementVisits();
+					visitors.push_back(p); 
 				}
-				else {
-					p = new Patient("name", "illness", clock);
-					lowSeverity->push(p);
-				}
+				
+				// Put the patient's priority number into the queue
+				waitlist->push(p->getPriority());
+			
 			}
 
+			
 			// Check Nurse  Availability
+			int priority; 
 			for (int i = 0; i < nurses.size();i++) {
-				// Check Medium Severity Queue
-				if (!medSeverity->empty()) {
-					p = medSeverity->front();
-					severity = 2;
-				}
-				// Check Low Severity Queue
-				else if (!lowSeverity->empty()) {
-					p = lowSeverity->front();
-					severity = 1;
-				}
-				else { continue; }
-				// Assign Patient to Nurse if Nurse is free, then Remove Patient from queue 
-				if (nurses[i]->getPatient() == NULL) {
-					nurses[i]->setPatient(p);
-					if (severity == 2) { medSeverity->pop(); }
-					else { lowSeverity->pop(); }
+
+				// Make Sure waitlist is not empty
+				if (!waitlist->empty()) {
+
+					// Access top of waitlist
+					priority = waitlist->top();
+					
+					// Make sure the patient can be treated by a nurse
+					if (priority >= 11000) { continue; }
+				
+					// Make sure the nurse is not busy
+					else {
+						if (nurses[i]->getPatient() == NULL) {
+							
+							// Find and assign the patient to the nurse
+							for (int j = visitors.size()-1;j >= 0; j--) {
+								if (visitors[j]->getPriority() == priority) {
+									nurses[i]->setPatient(visitors[j]);
+									waitlist->pop();
+									break;
+								}
+							}
+						}
+					}
 				}
 			}
-
-			// Check Doctor  Availability
+		
+			
+			// Check Doctor Availability
 			for (int i = 0; i < doctors.size();i++) {
-				//Check High Severity Queue
-				if (!highSeverity->empty()) {
-					p = highSeverity->front();
-					severity = 3;
-				}
-				// Check Medium Severity Queue
-				if (!medSeverity->empty()) {
-					p = medSeverity->front();
-					severity = 2;
-				}
-				// Check Low Severity Queue
-				else if (!lowSeverity->empty()) {
-					p = lowSeverity->front();
-					severity = 1;
-				}
-				else { continue; }
-				// Assign Patient to Doctor if Doctor is free and remove them from the queue
-				if (doctors[i]->getPatient() == NULL) {
-					doctors[i]->setPatient(p);
-					if (severity == 3) { highSeverity->pop(); }
-					else if (severity == 2) { medSeverity->pop(); }
-					else { lowSeverity->pop(); }
+
+				// Make Sure waitlist is not empty
+				if (!waitlist->empty()) {
+
+					// Access top of waitlist
+					priority = waitlist->top();
+
+					// Make sure the nurse is not busy
+						if (doctors[i]->getPatient() == NULL) {
+							
+							// Find and assign the patient to the nurse
+							for (int j = visitors.size() - 1;j >= 0; j--) {
+								if (visitors[j]->getPriority() == priority) {
+									doctors[i]->setPatient(visitors[j]);
+									waitlist->pop();
+									break;
+								}
+							}
+						}
 				}
 			}
-
-
-
-
-
-
+			
 			// Increment the Clock
 			clock++;
 		}
@@ -231,18 +279,67 @@ public:
 
 	void show_stats(){
 		// Show final ER statistics
-		cout << "People in Queues:" << endl << "Low:" << lowSeverity->size() << " Med:" << medSeverity->size() << " High:" << highSeverity->size() << endl;
+		cout << "Patients in Queue:" << waitlist->size() << endl;
 		cout << "Total people treated: " << totalVisits << endl;
 		cout << "Total wait time: " << totalVisitTime << endl;
 		cout << "Total Hours " << clock / 60 << endl;
 
-		cout << "Average nurse wait time: " << nurseTime / nurseTotal << endl;
-		cout << "Average doctor wait time: " << doctorTime / doctorTotal << endl;
-		
+		cout << "Average nurse wait time: " << static_cast<double>(nurseTime) / static_cast<double>(nurseTotal) << endl;
+		cout << "Average doctor wait time: " << static_cast<double>(doctorTime) / static_cast<double>(doctorTotal) << endl;
+		cout << "Average wait time: " << static_cast<double>(totalVisitTime) / static_cast<double>(totalVisits) << endl << endl;
 
+		// Put Patients into map
+		for (int i = 0;i < visitors.size();i++) {
+			patientsByName[visitors[i]->getName()] = visitors[i];
+		}
+		
+		
+		cout << "Some patients: " << visitors[0]->getName() << " " << visitors[1]->getName() << " " << visitors[2]->getName() << endl << endl;
+		string n;
+		Patient* p;
+
+		// Search Map of Patients by Patient name
+		for(int i = 0;i<1000;i++){
+			cout << "Enter a name: ";
+			cin >> n;
+			if (n == "done") { continue; }
+			if (patientsByName.find(n) != patientsByName.end()) {
+				p = patientsByName.find(n)->second;
+				cout << p->getName() << " visited " << p->getVisits() << " time(s) and the severity was " << p->getPriority() / 1000 << endl << endl;
+			}
+		}
 		
 	}
 
+	
 
+	void Patients_init() {
+		string name ="";
+		string illness ="";
+		vector<string> names;
+		vector<string> illnesses;
+
+		// Read in Names from text file and store in vector
+		ifstream s("Names.txt");
+		while (std::getline(s,name)) {
+			names.push_back(name);
+		}
+		s.close();
+
+		// Read in Illnesses from text file and store in vector
+		ifstream t("Illnesses.txt");
+		while (std::getline(t, illness)) {
+			illnesses.push_back(illness);
+		}
+		t.close();
+		
+		// Assign Names to Patients
+		for (int i = 0;i < names.size();i++) {
+			patients.push_back(new Patient(names[i]));
+		}
+		
+	}
+
+	
 
 };
