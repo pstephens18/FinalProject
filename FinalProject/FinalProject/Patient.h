@@ -1,14 +1,15 @@
 #ifndef PATIENT_H
 #define PATIENT_H
 
+#include <vector>
 using namespace std;
-
 
 class Patient {
 	string illness;
 	string name;
 	int arrivalTime;
-	int priorityNumber;
+	int treatTime;
+	vector<int> priorityNumber;
 	bool sick;
 	int visits;
 
@@ -36,10 +37,25 @@ public:
 
 	void incrementVisits() { visits++; }
 	
-	int getPriority() { return priorityNumber;}
-	void setPriority(int p) { priorityNumber = p; }
+	int getPriority() { return priorityNumber[priorityNumber.size()-1];}
+	void setPriority(int p) { priorityNumber.push_back(p); }
+
+	
+	void printPriority() {
+		for (int i = 0;i < priorityNumber.size();i++) {
+			cout << priorityNumber[i] / 10000 << " ";
+		}
+	}
+
 
 	int getVisits() { return visits; }
+
+	void setTreatTime(int t) {
+		treatTime = t;
+	}
+	int getTreatTime() {
+		return treatTime;
+	}
 
 };
 
