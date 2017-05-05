@@ -42,7 +42,8 @@ private:
 	vector<int> allPriorities;
 
 
-	priority_queue<int> *waitlist;
+	priority_queue<int> *nurseWaitlist;
+	priority_queue<int> *doctorWaitlist;
 
 
 
@@ -82,7 +83,8 @@ public:
 		totalVisitTime = 0;
 		totalVisits = 0;
 		nurseTime = 0; nurseTotal = 0; doctorTime = 0; doctorTotal = 0;
-		waitlist = new priority_queue<int>;
+		nurseWaitlist = new priority_queue<int>;
+		doctorWaitlist = new priority_queue<int>;
 		
 		Patients_init();
 		priorityIterator = 0;
@@ -219,7 +221,7 @@ public:
 				// Select someone to get sick
 				int index;
 				bool con = true;
-				if ((patients.size() * 9) / 10 < (waitlist->size())) {
+				if ((patients.size() * 9) / 10 < (nurseWaitlist->size()+doctorWaitlist->size())) {
 					for (int i = 0;i < patients.size();i++) {
 						if (!(patients[i]->getSick())) {
 
@@ -230,7 +232,7 @@ public:
 							patients[i]->setArrivalTime(clock);
 
 
-							// Set Priority ;
+							// Set Priority 
 							if (patients[i]->getVisits() != 0) {
 								patients[i]->setPriority(severity * 10000 + 9999 - priorityIterator);
 
@@ -296,7 +298,8 @@ public:
 				}
 				
 				// Put the patient's priority number into the queue
-				 waitlist->push(p->getPriority());
+				if (p->getPriority() > 110000) { doctorWaitlist->push(p->getPriority()); }
+				else { nurseWaitlist->push(p->getPriority()); }
 			
 			}
 			
@@ -306,10 +309,10 @@ public:
 			for (int i = 0; i < nurses.size();i++) {
 
 				// Make Sure waitlist is not empty
-				if (!waitlist->empty()) {
+				if (!nurseWaitlist->empty()) {
 
 					// Access top of waitlist
-					priority = waitlist->top();
+					priority = nurseWaitlist->top();
 					
 					// Make sure the patient can be treated by a nurse
 					if (priority >= 110000) { continue; }
@@ -323,7 +326,7 @@ public:
 								if (patients[j]->getPriority() == priority) {
 									patients[j]->setTreatTime(clock);
 									nurses[i]->setPatient(patients[j]);
-									waitlist->pop();
+									nurseWaitlist->pop();
 									break;
 								}
 							}
@@ -332,29 +335,34 @@ public:
 				}
 			}
 		
+
 			
 			// Check Doctor Availability
 			for (int i = 0; i < doctors.size();i++) {
 
 				// Make Sure waitlist is not empty
-				if (!waitlist->empty()) {
+				if (!doctorWaitlist->empty() || !nurseWaitlist->empty()) {
 
 					// Access top of waitlist
-					priority = waitlist->top();
+					if (!doctorWaitlist->empty()) { priority = doctorWaitlist->top(); }
+					else { priority = nurseWaitlist->top(); }
 
-					// Make sure the nurse is not busy
+					// Make sure the doctor is not busy
 						if (doctors[i]->getPatient() == NULL) {
 							
-							// Find and assign the patient to the nurse
+							// Find and assign the patient to the doctor
 							for (int j = patients.size() - 1;j >= 0; j--) {
 								if (patients[j]->getPriority() == priority) {
 									patients[j]->setTreatTime(clock);
 									doctors[i]->setPatient(patients[j]);
-									waitlist->pop();
+									if (priority > 110000) { doctorWaitlist->pop(); }
+									else { nurseWaitlist->pop(); }
 									break;
 								}
+								}
 							}
-						}
+
+						
 				}
 			}
 			
@@ -365,7 +373,8 @@ public:
 
 	void show_stats(){
 		// Show final ER statistics
-		cout << "Patients in Queue:" << waitlist->size() << endl;
+		cout << "Doctor Queue:" <<  doctorWaitlist->size() << endl;
+		cout << "Nurse Queue:" << nurseWaitlist->size() << endl;
 		cout << "Total patients treated: " << totalVisits << endl;
 		cout << "Total wait time: " << totalVisitTime << endl;
 		cout << "Total Hours " << clock / 60 << endl;
