@@ -11,7 +11,7 @@ int main() {
 
 	Simulator* sim = new Simulator();
 	sim->enter_data();
-	sim->run_simulation(60*24*7);
+	sim->run_simulation();
 	sim->show_stats();
 
 	delete sim;

@@ -9,12 +9,10 @@ class Patient {
 	int arrivalTime;
 	int treatTime;
 	vector<int> priorityNumber;
-	bool sick;
 
 public:
 	Patient(string n) {
 		name = n;
-		sick = false;
 	}
 	Patient() {};
 
@@ -27,8 +25,6 @@ public:
 	void setArrivalTime(int a) {
 		arrivalTime = a;
 	}
-	bool getSick() { return sick; }
-	void setSick(bool b) { sick = b; }
 
 	
 	int getPriority() { return priorityNumber[priorityNumber.size()-1];}

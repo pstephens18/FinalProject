@@ -26,12 +26,12 @@ private:
 
 	
 	map<string, Patient*> patientsByName;
-	map<string, Patient*> sickPeople;
-	map<string, Patient*> healthyPeople;
+	map<int, Patient*> patientsByPriorityNumber;
+	map<string, Patient*> searchMap;
 
+	// Variables used to calculate Caregiver treatment time
 	int doctorTime;
 	int nurseTime;
-
 	int nurseTotal;
 	int doctorTotal;
 
@@ -83,16 +83,22 @@ public:
 		clock = 0;
 		totalVisitTime = 0;
 		totalVisits = 0;
-		nurseTime = 0; nurseTotal = 0; doctorTime = 0; doctorTotal = 0;
+		nurseTime = 0; 
+		nurseTotal = 0; 
+		doctorTime = 0; 
+		doctorTotal = 0;
+
+		priorityIterator = 0;
+
 		nurseWaitlist = new priority_queue<int>;
 		doctorWaitlist = new priority_queue<int>;
-		
+
 		Patients_init();
-		priorityIterator = 0;
 	
 	};
 
-	void enter_data(){
+	void enter_data() {
+		
 		// Get number of doctors and nurses from user
 		int numNurses;
 		int numDoctors = read_int("How many doctors would you like? 1 or 2? \n", 1, 2);
@@ -100,16 +106,17 @@ public:
 		if(numDoctors == 2){ numNurses = 1; }
 		else { numNurses = read_int("How many nurses would you like? 1 or 2? \n", 1, 2); }
 
+		// Get Patient Arrival Rate from user
 		patientArivalRate = read_int("What is the patient arrival rate in patients/hour? It must be less than 60. \n", 1, 60);
-
-
+		
+		// Put doctors and nurses into their own vectors 
 		for (int i = 0; i < numDoctors; i++) {
 			doctors.push_back(new Doctor(20, 1));
 		}
 		for (int i = 0; i < numNurses; i++) {
 			nurses.push_back(new Nurse(10, 1));
 		}
-
+		
 		
 	}
 
@@ -118,14 +125,16 @@ public:
 		return ((rand() % (max - min + 1)) + min);
 	}
 
-	void run_simulation(int sim_time){ 
+	double run_simulation(){ 
 		Patient* p;
 		int severity;
 		int wait;
 		string name;
-		string illness;
-		for (int i = 0; i <= sim_time; i++) { 
 
+		// Simulate for a week
+		for (int i = 0; i <= 7*60*24; i++) { 
+
+			
 			// Iterate through all nurses
 			for (int i = 0; i < nurses.size();i++) {
 
@@ -137,26 +146,30 @@ public:
 
 						// Decided if the nurse should be done with the patient
 						if (random(6, 1) == 1 || wait == nurses[i]->getMaxWaitTime()) {
+							
 
-							// Find Patient in vector of Patients
-							for (int j = 0;j < patients.size();j++) {
-								if (patients[j]->getPriority() == nurses[i]->getPatient()->getPriority()) {
+							// Increment total visit time
+							if (clock - patientsByName[nurses[i]->getPatient()->getName()]->getArrivalTime() <= 20) {
+								totalVisitTime = totalVisitTime + clock - patientsByName[nurses[i]->getPatient()->getName()]->getArrivalTime();
+							}
+							else { totalVisitTime += 8; }
 
-									// Increment total visit time
-									if (clock - patients[j]->getArrivalTime() <= 20) {
-										totalVisitTime = totalVisitTime + clock - patients[j]->getArrivalTime();
-									}
-									else { totalVisitTime += 8; }
-
-									// Heal the patient
-									patients[j]->setSick(false);
+							
+							// Heal the patient, remove name from sick list and add to healthy list
+							healthyNames.push_back(nurses[i]->getPatient()->getName()); 
+							for (int j = 0;j < sickNames.size();j++) {
+								if (sickNames[j] == nurses[i]->getPatient()->getName()) {
+									sickNames.erase(sickNames.begin() + j);
 									break;
 								}
 							}
+							
+								
 							// Update hospital stats
 							totalVisits += 1;
 							nurseTime += wait;
 							nurseTotal += 1;
+
 							// Unassign the Patient from the nurse
 							nurses[i]->setPatient(NULL);
 						}
@@ -164,7 +177,7 @@ public:
 
 				}
 			}
-
+			
 			// Iterate through all doctors
 			for (int i = 0; i < doctors.size();i++) {
 
@@ -177,21 +190,23 @@ public:
 						// Decide if the Patient can leave
 						if (random(12, 1) == 1 || wait == doctors[i]->getMaxWaitTime()) {
 
-							// Find the patient in the vector of Patients
-							for (int j = 0;j < patients.size();j++) {
-								if (patients[j]->getPriority() == doctors[i]->getPatient()->getPriority()) {
-
-									// Heal Patient
-									patients[j]->setSick(false);
-
-									// Increment total visit time
-									if (clock - patients[j]->getArrivalTime() <= 20) {
-										totalVisitTime = totalVisitTime + clock - patients[j]->getArrivalTime();
-									}
-									else { totalVisitTime += 12; }
-									break;
-								}
+						// Heal Patient, remove name from sick list and add to healthy list
+						healthyNames.push_back(doctors[i]->getPatient()->getName());
+						for (int j = 0;j < sickNames.size();j++) {
+							if (sickNames[j] == doctors[i]->getPatient()->getName()) {
+								sickNames.erase(sickNames.begin() + j);
+								break;
 							}
+						}
+
+						// Increment total visit time
+						if (clock - patientsByName[doctors[i]->getPatient()->getName()]->getArrivalTime() <= 20) {
+							totalVisitTime = totalVisitTime + clock - patientsByName[doctors[i]->getPatient()->getName()]->getArrivalTime();
+						}
+						else { totalVisitTime += 12; }
+						
+								
+							
 
 							// Update hospital stats
 							totalVisits += 1;
@@ -209,8 +224,8 @@ public:
 
 
 			
-			// Randomly decide if a new patient has arrived, ALso consider if the entire town is at the ER
-			if (random(60, 0) < patientArivalRate && (doctorWaitlist->size() + nurseWaitlist->size() + nurses.size() + doctors.size()) != patients.size()) {
+			// Randomly decide if a new patient has arrived, Also consider if the entire town is at the ER
+			if (random(60, 0) < patientArivalRate && healthyNames.size() > 0) {
 
 				// Randomly decide the severity of the patient's illness
 				if (random(10, 1) == 1) { severity = random(20, 16); }
@@ -218,72 +233,39 @@ public:
 				else { severity = random(10, 1); }
 
 				
-				// Select someone to get sick
-				int index;
-				bool con = true;
-
-				// if more than 90% of people are already sick, iterate through potential patients
-				if ((patients.size() * 9) / 10 < (nurseWaitlist->size()+doctorWaitlist->size())) {
-					for (int i = 0;i < patients.size();i++) {
-						if (!(patients[i]->getSick())) {
-
-							// Make Patient Sick
-							patients[i]->setSick(true);
-
-							// Set Arrival Time
-							patients[i]->setArrivalTime(clock);
-
-
-							// Set Priority 
-							// Every patient is initialized with priority number
-							if (patients[i]->getNumVisits() != 1) {
-								patients[i]->setPriority(severity * 10000 + 9999 - priorityIterator);
-
-								// Increment the priority iterator
-								priorityIterator++;
-							}
-							// Store patient
-							p = patients[i];
-
-							break;
-						}
-
+				// Select someone to get sick from the healthy list
+				string key = healthyNames[random(healthyNames.size() - 1, 0)];
+				p = patientsByName[key];
+				
+				// Make Patient Sick, add name to sick list and remove from healthy list
+				sickNames.push_back(p->getName());
+				
+				for (int i = 0;i < healthyNames.size();i++) {
+					if (healthyNames[i] == p->getName()) {
+						healthyNames.erase(healthyNames.begin() + i);
+						break;
 					}
 				}
-				else {
-					do {
-						index = random(patients.size() - 1, 0);
-
-						// Make sure the patient is not sick already
-						if (!(patients[index]->getSick())) {
-
-							// Make Patient Sick
-							patients[index]->setSick(true);
-
-							// Set Arrival Time
-							patients[index]->setArrivalTime(clock);
+				
+				
+				// Set Arrival Time
+				p->setArrivalTime(clock);
 
 
-							// Set Priority 
-							// Every Patient is initialized with a priority number
-							if (patients[index]->getNumVisits() != 1) {
-								patients[index]->setPriority(severity * 10000 + 9999 - priorityIterator);
+				// Set Priority 
+				// Every patient is initialized with priority number
+				if (p->getNumVisits() != 1) {
+					p->setPriority(severity * 10000 + 9999 - priorityIterator);
 
-								// Increment the priority iterator
-								priorityIterator++;
-							}
-							// Store patient
-							p = patients[index];
-
-
-
-							// Continue
-							con = false;
-						}
-					} while (con);
+					// Increment the priority iterator
+					priorityIterator++;
 				}
 
+				// Update Maps
+				patientsByName[p->getName()] = p;
+				patientsByPriorityNumber[p->getPriority()] = p; 
 
+							
 				bool newVisitor = true;
 				
 				// Check if the patient is a new visitor
@@ -294,16 +276,16 @@ public:
 					} 
 				}
 				
-				// Add to list if the patient is a new visitor
+				// Add to visitors list if the patient is a new visitor
 				if (newVisitor) { 
 					visitors.push_back(p); 
 				}
 				
-				// Put the patient's priority number into the queue
+				// Put the patient's priority number into one of the queues
 				if (p->getPriority() > 110000) { doctorWaitlist->push(p->getPriority()); }
 				else { nurseWaitlist->push(p->getPriority()); }
-			
-			}
+				
+			}  
 			
 			
 			// Check Nurse  Availability
@@ -319,26 +301,28 @@ public:
 					// Make sure the patient can be treated by a nurse
 					if (priority >= 110000) { continue; }
 				
-					// Make sure the nurse is not busy
+					// Make sure the nurse does not already have a patient
 					else {
 						if (nurses[i]->getPatient() == NULL) {
 							
-							// Find and assign the patient to the nurse
-							for (int j = patients.size()-1;j >= 0; j--) {
-								if (patients[j]->getPriority() == priority) {
-									patients[j]->setTreatTime(clock);
-									nurses[i]->setPatient(patients[j]);
-									nurseWaitlist->pop();
-									break;
-								}
-							}
+							// Set Treat time 
+							patientsByPriorityNumber[priority]->setTreatTime(clock);
+							
+							// Update Maps
+							patientsByName[patientsByPriorityNumber[priority]->getName()] = patientsByPriorityNumber[priority];
+							
+							// Assign Nurse to patient							
+							nurses[i]->setPatient(patientsByPriorityNumber[priority]);
+
+							// Remove patient from waitlist
+							nurseWaitlist->pop(); 
 						}
 					}
 				}
 			}
 		
 
-			
+		
 			// Check Doctor Availability
 			for (int i = 0; i < doctors.size();i++) {
 
@@ -349,33 +333,36 @@ public:
 					if (!doctorWaitlist->empty()) { priority = doctorWaitlist->top(); }
 					else { priority = nurseWaitlist->top(); }
 
-					// Make sure the doctor is not busy
+					// Make sure the doctor does not already have a patient
 						if (doctors[i]->getPatient() == NULL) {
-							
-							// Find and assign the patient to the doctor
-							for (int j = patients.size() - 1;j >= 0; j--) {
-								if (patients[j]->getPriority() == priority) {
-									patients[j]->setTreatTime(clock);
-									doctors[i]->setPatient(patients[j]);
-									if (priority > 110000) { doctorWaitlist->pop(); }
-									else { nurseWaitlist->pop(); }
-									break;
-								}
-								}
-							}
 
-						
-				}
-			}
+							// Set Treat time 
+							patientsByPriorityNumber[priority]->setTreatTime(clock);
+
+							// Update Maps
+							patientsByName[patientsByPriorityNumber[priority]->getName()] = patientsByPriorityNumber[priority];
+							
+							// Assign doctor to patient							
+							doctors[i]->setPatient(patientsByPriorityNumber[priority]);
+
+							// Remove patient from waitlist
+							if (priority < 110000) { nurseWaitlist->pop(); }
+							else { doctorWaitlist->pop(); 
+							}
+						}
+					}
+				} 
 			
 			// Increment the Clock
 			clock++;
 		}
+
+		return static_cast<double>(totalVisitTime) / static_cast<double>(totalVisits);
 	}
 
+	// Show final ER statistics and let user search patients
 	void show_stats(){
-		// Show final ER statistics
-
+		
 		// Number of people waiting with an illness severity greater than 10
 		cout << "Doctor Queue:" <<  doctorWaitlist->size() << endl;
 
@@ -390,19 +377,22 @@ public:
 		cout << "Total Hours " << clock / 60 << endl;
 
 		// These times are from start of treatment to end of treatment
-		cout << "Average nurse wait time: " << static_cast<double>(nurseTime) / static_cast<double>(nurseTotal) << endl;
-		cout << "Average doctor wait time: " << static_cast<double>(doctorTime) / static_cast<double>(doctorTotal) << endl;
+		cout << "Average nurse treatment time: " << static_cast<double>(nurseTime) / static_cast<double>(nurseTotal) << endl;
+		cout << "Average doctor treatment time: " << static_cast<double>(doctorTime) / static_cast<double>(doctorTotal) << endl;
 		
 		// Average wait time is calculated from entering waitlist to end of treatment 
 		cout << "Average wait time: " << static_cast<double>(totalVisitTime) / static_cast<double>(totalVisits) << endl << endl;
 
-		// Put Patients into map
+
+		// Put visitors into searchable map
+		int tVisits = 0;
 		for (int i = 0;i < visitors.size();i++) {
-			patientsByName[visitors[i]->getName()] = visitors[i];
+			searchMap[visitors[i]->getName()] = visitors[i];
+			tVisits += visitors[i]->getNumVisits();
 		}
+		cout << "Visits = " << tVisits << endl;
 		
-		
-		//cout << "Some patients: " << visitors[0]->getName() << " " << visitors[1]->getName() << " " << visitors[2]->getName() << endl << endl;
+	
 		string n;
 		Patient* p;
 
@@ -424,8 +414,8 @@ public:
 			if (n == "done") { break; }
 
 			// Find patient if they exist
-			if (patientsByName.find(n) != patientsByName.end()) {
-				p = patientsByName.find(n)->second;
+			if (searchMap.find(n) != searchMap.end()) {
+				p = searchMap.find(n)->second;
 				cout << "	" << p->getName() << " visited " << p->getNumVisits() << " time(s) with severity level(s) "; p->printPriority(); cout << endl << endl;
 			}
 		}
@@ -454,16 +444,19 @@ public:
 		}
 
 		
-		// Assign a severity to each potential patient
+		
 		for (int i = 0;i < names.size();i++) {
 			if (random(10, 1) == 1) { severity = random(20, 16); }
 			else if (random(5, 1) == 1) { severity = random(15, 11); }
 			else { severity = random(10, 1); }
 
+			// Assign an illness severity to each potential patient
 			patients[i]->setPriority(severity * 10000 + 9999 - iterator);
 			iterator++;
 
-			healthyPeople[patients[i]->getName()] = patients[i];
+			// Initialize Maps and store patient names in a vector
+			patientsByName[patients[i]->getName()] = patients[i];
+			patientsByPriorityNumber[patients[i]->getPriority()] = patients[i];
 			healthyNames.push_back(patients[i]->getName());
 			
 		}
