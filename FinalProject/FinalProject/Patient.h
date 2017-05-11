@@ -9,10 +9,13 @@ class Patient {
 	int arrivalTime;
 	int treatTime;
 	vector<int> priorityNumber;
+	bool sick;
 
 public:
 	Patient(string n) {
 		name = n;
+		sick = false;
+		priorityNumber.push_back(0);
 	}
 	Patient() {};
 
@@ -25,19 +28,26 @@ public:
 	void setArrivalTime(int a) {
 		arrivalTime = a;
 	}
+	bool getSick() { return sick; }
+	void setSick(bool b) { sick = b; }
 
 	
 	int getPriority() { return priorityNumber[priorityNumber.size()-1];}
-	void setPriority(int p) { priorityNumber.push_back(p); }
-	int getNumVisits() { return priorityNumber.size(); }
+	void setPriority(int p) { 
+		if (priorityNumber[0] = 0) { priorityNumber[0] = p; }
+		else { priorityNumber.push_back(p); }
+	}
+
+	int getNumVisits() { return priorityNumber.size() -1; }
 
 	
 	void printPriority() {
 		for (int i = 0;i < priorityNumber.size();i++) {
-			cout << priorityNumber[i] / 10000 << " ";
+			if (priorityNumber[i] != 0) {
+				cout << priorityNumber[i] / 10000 << " ";
+			}
 		}
 	}
-
 
 
 	void setTreatTime(int t) {
