@@ -3,7 +3,7 @@
 
 using namespace std;
 
-
+// Base Class for Doctors and Nurses
 class careGiver {
 protected:
 	int maxWaitTime;
@@ -21,7 +21,7 @@ public:
 	virtual void setPatient(Patient* p) = 0;
 };
 
-
+// Nurse Class
 class Nurse : public careGiver {
 public:
 	Nurse(int max, int min) : careGiver(max, min) { patient = NULL; };
@@ -40,6 +40,7 @@ public:
 	}
 };
 
+// Doctor Class
 class Doctor : public careGiver {
 public:
 	Doctor(int max, int min) : careGiver(max, min) { patient = NULL; };
@@ -58,5 +59,5 @@ public:
 	}
 };
 
-#endif // !CAREGIVER_H
+#endif
 

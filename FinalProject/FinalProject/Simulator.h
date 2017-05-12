@@ -381,9 +381,9 @@ public:
 
 		// Output total wait time
 		cout << "Total wait time: " << totalVisitTime << endl;
-		//cout << "Total Hours " << clock / 60 << endl;
 
-		// These times are from start of treatment to end of treatment, used to test nurse, doctor treatment times
+		// Testing stats
+		//cout << "Total Hours " << clock / 60 << endl;
 		//cout << "Average nurse wait time: " << static_cast<double>(nurseTime) / static_cast<double>(nurseTotal) << endl;
 		//cout << "Average doctor wait time: " << static_cast<double>(doctorTime) / static_cast<double>(doctorTotal) << endl;
 		
@@ -400,7 +400,7 @@ public:
 			}
 		}
 
-		// Testing stats
+		// More testing stats
 		//cout << "Total people: " << patients.size() << endl;
 		//cout << "The total number of priorities given " << visits << endl;
 		
